@@ -1,0 +1,17 @@
+#pragma once
+
+#define MDNS_SERVICE_TYPENAME "_esp32coolmon"
+
+#define MOSI -1 //not used
+#define MISO GPIO_NUM_19
+#define CLK GPIO_NUM_18
+#define CS GPIO_NUM_25
+#define DMA_CHAN SPI_DMA_CH2
+
+#define ADC_CHANNEL_PRESSURE ADC1_CHANNEL_4 //corresponds to gpio 36
+#define ADC_ATTENUATION_PRESSURE ADC_ATTEN_DB_12
+#define ADC_BITWIDTH_PRESSURE ADC_BITWIDTH_12
+#define ADC_UNIT_PRESSURE ADC_UNIT_1
+
+#define FLOWMETER_PCNT_PIN GPIO_NUM_33
+
