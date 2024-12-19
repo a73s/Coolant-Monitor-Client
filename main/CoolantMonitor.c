@@ -8,8 +8,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-// #include "cc.h"
-#include "network.h"
+// #include "cc.h" #include "network.h"
 #include "funcs.h"
 #include "command.h"
 #include "config.h"
@@ -60,8 +59,7 @@ void app_main(void){
 	vTaskDelay(5000/portTICK_PERIOD_MS);
 
 	char tmp[512]="";
-	// scanf("%s", tmp);
-	getLineInput(tmp, 512);
+	fgets(tmp, 512, stdin);
 
 	struct wifiCridentials wifiCrids = {
 		.ssid = "",
@@ -299,24 +297,24 @@ void app_main(void){
 
 		// short pressureMv = multisamplePressureADC(adcHandle, ADC_CHANNEL_PRESSURE);
 
-		// short pressureMv = multisamplePressureADC(adcHandle, adcCaliHandle, ADC_CHANNEL_PRESSURE);
-		// printf("Pressure: %i mv\n", pressureMv);
-		// temp.ftemp = multisampleTempSPI(spi);
-		// printf("Temp: %f\n", temp.ftemp);
-		// float pps = takeGPM(pcntChan, pcntUnit);
-		short pressureMv = 420;
-		printf("Pressure: %"PRIi16" mv\n", pressureMv);
-		temp.ftemp = 20.0192f;
+		short pressureMv = multisamplePressureADC(adcHandle, adcCaliHandle, ADC_CHANNEL_PRESSURE);
+		printf("Pressure: %i mv\n", pressureMv);
+		temp.ftemp = multisampleTempSPI(spi);
 		printf("Temp: %f\n", temp.ftemp);
-		float pps = 5.232;
+		float pps = takeGPM(pcntChan, pcntUnit);
+		// short pressureMv = 420;
+		// printf("Pressure: %"PRIi16" mv\n", pressureMv);
+		// temp.ftemp = 20.0192f;
+		// printf("Temp: %f\n", temp.ftemp);
+		// float pps = 5.232;
 
 		// unsigned sendbuff[3] = {pressureMv, temp.itemp, pps};
 		char sendbuff[256] = {0};
 		sprintf(sendbuff, "<%i,%f,%f\n", pressureMv, temp.ftemp, pps);
 
-		printf("%u\n", pressureMv);
-		printf("%f\n", temp.ftemp);
-		printf("%f\n", pps);
+		// printf("%u\n", pressureMv);
+		// printf("%f\n", temp.ftemp);
+		// printf("%f\n", pps);
 
 		printf("==================================================================================\n");
 		fflush(stdout);

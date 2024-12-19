@@ -13,6 +13,7 @@ void getLineInput(char buf[], size_t len){
 	fflush(stdin); //clears any junk in stdin
 	char *bufp;
 	bufp = buf;
+
 	while(true){
 
 		vTaskDelay(100/portTICK_PERIOD_MS);

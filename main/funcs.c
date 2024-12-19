@@ -10,34 +10,37 @@
 #include "driver/spi_master.h"
 
 double multisampleTempSPI(spi_device_handle_t devHandle){
-	double cumulative = 0;
 
-	for(int i = 0; i < 10; i++){
-		uint16_t data;
-		spi_transaction_t transaction = {
+	uint16_t data;
+	spi_transaction_t transaction = {
 
-			.tx_buffer = NULL,
-			.rx_buffer = &data,
-			.length = 16,
-			.rxlength = 16,
-		};
+		.tx_buffer = NULL,
+		.rx_buffer = &data,
+		.length = 32,
+		.rxlength = 32,
+	};
 
-		ESP_ERROR_CHECK(spi_device_polling_transmit(devHandle, &transaction));
+	ESP_ERROR_CHECK(spi_device_polling_transmit(devHandle, &transaction));
 
-		int16_t res = (int16_t) SPI_SWAP_DATA_RX(data, 16);
+	int32_t res = (int32_t) SPI_SWAP_DATA_RX(data, 32);
 
-		if(res & (1 << 2))
-			printf("Sensor is not connected\n");
-		else{
-			res >>=3; // this will push out the bottom 3 bits, these are "Thermocouple inputs", "Device ID", and "State"
-			cumulative += res * 0.25;
+	int32_t thermocouple = res >> 18;
+
+	if(res & ((1 << 2) | (1 << 1) | (1 << 0)))
+		printf("Sensor is not connected\n");
+	else{
+
+
+		if(thermocouple & (1<<13)){
+			thermocouple ^= ((1<<13) & (1<<31));
+			printf("lsdkjaflkjsa");
 		}
 
-		fflush(stdout);
-
-		vTaskDelay(500/portTICK_PERIOD_MS);
+		// int32_t internal = (res << 16) >> 20;
 	}
-	return cumulative/10;
+
+	fflush(stdout);
+	return thermocouple * 0.25;
 }
 
 int multisamplePressureADC(adc_oneshot_unit_handle_t adcHandle, adc_cali_handle_t adcCaliHandle, adc_channel_t adcChan){
