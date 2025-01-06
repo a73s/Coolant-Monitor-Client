@@ -9,7 +9,7 @@
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 
-double multisampleTempSPI(spi_device_handle_t devHandle){
+double tempSPI(spi_device_handle_t devHandle){
 
 	uint16_t data;
 	spi_transaction_t transaction = {
@@ -33,7 +33,6 @@ double multisampleTempSPI(spi_device_handle_t devHandle){
 
 		if(thermocouple & (1<<13)){
 			thermocouple ^= ((1<<13) & (1<<31));
-			printf("lsdkjaflkjsa");
 		}
 
 		// int32_t internal = (res << 16) >> 20;
@@ -122,8 +121,15 @@ double takeGPM(pcnt_channel_handle_t pcntChan, pcnt_unit_handle_t pcntUnit){
 
 	double pulsesPerSec = pulseCount/seconds;
 	printf("Pulses Per Second: %lf\n", pulsesPerSec);
-	printf("pulseCount: %i, timerCount: %llu, seconds: %lf\n", pulseCount, timerCount, seconds);
+	printf("pulseCount: %i, timerCount: %llu, seconds: %lf, GPM: %lf\n", pulseCount, timerCount, seconds, pulsesPerSec*0.2642/10.0);
 	fflush(stdout);
 	return pulsesPerSec;
 }
 
+// float basic_lerp(const float M, const float X, const float B){
+// 	return M*X + B;
+// }
+
+float basic_lerp(const float X, const struct lerpSpec spec){
+	return spec.M*X + spec.B;
+}

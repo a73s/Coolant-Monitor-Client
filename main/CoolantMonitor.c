@@ -15,6 +15,7 @@
 
 #include "esp_wifi.h"
 #include "inttypes.h"
+#include "network.h"
 #include "stddef.h"
 #include "esp_log.h"
 #include "esp_err.h"
@@ -29,6 +30,10 @@
 static const char *TAG = "MAIN";
 
 void app_main(void){
+
+	struct lerpSpec PRESSURE_CALIBRATION = {0.04467, -25.46537};
+	struct lerpSpec TEMPERATURE_CALIBRATION = {1.01522, 1.52284};
+	float FLOW_MULTIPLIER = 0.2642/10.0;
 
 	esp_err_t ret;
 
@@ -125,7 +130,6 @@ void app_main(void){
 	ret = adc_oneshot_config_channel(adcHandle, ADC_CHANNEL_PRESSURE, &adcCfg);
 	ESP_ERROR_CHECK(ret);
 
-	// 
 	adc_cali_handle_t adcCaliHandle = NULL;
 	adc_cali_line_fitting_config_t adcCaliConf = {
 		.atten = ADC_ATTENUATION_PRESSURE,
@@ -185,6 +189,42 @@ void app_main(void){
 	ESP_ERROR_CHECK(ret);
 	ret = pcnt_unit_start(pcntUnit);
 	ESP_ERROR_CHECK(ret);
+
+	//======= RETRIEVE CALIBRATION FROM NVS =======
+
+	float temp_M = 0.0;
+	float temp_B = 0.0;
+	size_t floatSize = sizeof(float);
+	ret = nvs_get_blob(nvsHandle, "pressure_B", &temp_B, &floatSize);
+	esp_err_t ret2 = nvs_get_blob(nvsHandle, "pressure_M", &temp_M, &floatSize);
+
+	if(!ret && !ret2){
+		PRESSURE_CALIBRATION.M = temp_M;
+		PRESSURE_CALIBRATION.B = temp_B;
+	}else{
+		printf("Calibration data retrieval failed, using default values for pressure calibration, errors: %i, %i\n", ret, ret2);
+	}
+
+	temp_M = 0.0;
+	temp_B = 0.0;
+	ret = nvs_get_blob(nvsHandle, "temperature_B", &temp_B, &floatSize);
+	ret2 = nvs_get_blob(nvsHandle, "temperature_M", &temp_M, &floatSize);
+
+	if(!ret && !ret2){
+		TEMPERATURE_CALIBRATION.M = temp_M;
+		TEMPERATURE_CALIBRATION.B = temp_B;
+	}else{
+		printf("Calibration data retrieval failed, using default values for temperature calibration, errors: %i, %i\n", ret, ret2);
+	}
+
+	float tmp_flow = 0.0;
+	ret = nvs_get_blob(nvsHandle, "flow_multiplier", &tmp_flow, &floatSize);
+
+	if(!ret){
+		FLOW_MULTIPLIER = tmp_flow;
+	}else{
+		printf("Calibration data retrieval failed, using default value for flow meter multiplier, error: %i\n", ret);
+	}
 
 	//======= CONNECT TO/INITIALIZE WIFI & CONNECT TO TCP SERVER =======
 
@@ -285,36 +325,22 @@ void app_main(void){
 	ESP_ERROR_CHECK(ret);
 
 	while(1){
-	// for(int i = 0; i < 10; i++){
 
 		fflush(stdout);
 
-		union temperature {
-
-			float ftemp;
-			uint32_t itemp;
-		}temp;
-
-		// short pressureMv = multisamplePressureADC(adcHandle, ADC_CHANNEL_PRESSURE);
+		printf("flowMultiplier: %f\n", FLOW_MULTIPLIER);
 
 		short pressureMv = multisamplePressureADC(adcHandle, adcCaliHandle, ADC_CHANNEL_PRESSURE);
+		float pressurePSI = basic_lerp(pressureMv, PRESSURE_CALIBRATION);
+		float temp_celsius = basic_lerp(tempSPI(spi), TEMPERATURE_CALIBRATION);
+
+		printf("Pressure: %f PSI\n", pressurePSI);
 		printf("Pressure: %i mv\n", pressureMv);
-		temp.ftemp = multisampleTempSPI(spi);
-		printf("Temp: %f\n", temp.ftemp);
+		printf("Temp: %f\n", temp_celsius);
 		float pps = takeGPM(pcntChan, pcntUnit);
-		// short pressureMv = 420;
-		// printf("Pressure: %"PRIi16" mv\n", pressureMv);
-		// temp.ftemp = 20.0192f;
-		// printf("Temp: %f\n", temp.ftemp);
-		// float pps = 5.232;
 
-		// unsigned sendbuff[3] = {pressureMv, temp.itemp, pps};
 		char sendbuff[256] = {0};
-		sprintf(sendbuff, "<%i,%f,%f\n", pressureMv, temp.ftemp, pps);
-
-		// printf("%u\n", pressureMv);
-		// printf("%f\n", temp.ftemp);
-		// printf("%f\n", pps);
+		sprintf(sendbuff, "<%f,%f,%f\n", pressurePSI, temp_celsius, pps*FLOW_MULTIPLIER);
 
 		printf("==================================================================================\n");
 		fflush(stdout);
@@ -322,7 +348,6 @@ void app_main(void){
 		send(socketfd, &sendbuff, strlen(sendbuff), 0);
 
 		vTaskDelay(2000/portTICK_PERIOD_MS);
-		// vTaskDelay(1);
 	}
 	close(socketfd);
 	abort();

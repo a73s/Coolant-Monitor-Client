@@ -51,8 +51,10 @@ void getLineInput(char buf[], size_t len){
 void printHelp(){
 
 	printf("help - print this command\n");
-	printf("wifi - enter wifi cridentials\n"); printf("calibrate-flow - calibrate flow sensor\n");
-	printf("calibrate-adc - enter wifi cridentials\n");
+	printf("wifi - enter wifi cridentials\n");
+	printf("calibrate-flow - Set the multiplier for the flow rate sensor. output = Hz * multiplier\n");
+	printf("calibrate-pressure - Calibrate the pressure sensor linearly. You will be asked to enter M and B, the output of the sensor will be M*x+B, x being the original reading.\n");
+	printf("calibrate-temperature - Calibrate the temperature sensor linearly. You will be asked to enter M and B, the output of the sensor will be M*x+B, x being the original reading.\n");
 	printf("exit - exit command mode\n");
 }
 
@@ -91,13 +93,126 @@ void commandMode(nvs_handle_t * nvsHandle, struct wifiCridentials * wifiCrids){
 			strncpy(wifiCrids->ssid,(char*) ssid, ssidlen);
 			strncpy(wifiCrids->passwd,(char*) pass, passlen);
 
-		}else if(strcmp(command, "calibrate-adc") == 0){
+		}else if(strcmp(command, "calibrate-pressure") == 0){
 
 			char tmpline[64] = {0};
 
-			printf("\nApply <voltage>mV(relative to gnd) to D32 and enter 'c' to continue>>");
+			float M = 0;
+			do{
+				printf("\nEnter M (decimal): ");
+				fflush(stdout);
+				getLineInput(tmpline, 64);
+				M = atof(tmpline);
+
+				if(M == 0){
+					printf("\nEntry failed, Please try again.");
+					fflush(stdout);
+				}
+			}while(M == 0);
+
+			float B = 0;
+			do{
+				printf("\nEnter B (decimal): ");
+				fflush(stdout);
+				getLineInput(tmpline, 64);
+				B = atof(tmpline);
+
+				if(B == 0){
+					printf("\nEntry failed, Please try again.");
+					fflush(stdout);
+				}
+			}while(B == 0);
+
+			printf("\nWould You like to apply M = %f and B = %f? (Y/N): ", M, B);
 			fflush(stdout);
 			getLineInput(tmpline, 64);
+
+			if(strcmp(tmpline, "Y") || strcmp(tmpline, "y")){
+
+				esp_err_t ret = nvs_set_blob(*nvsHandle, "pressure_B", &B, sizeof(float));
+				esp_err_t ret2 = nvs_set_blob(*nvsHandle, "pressure_M", &M, sizeof(float));
+				printf("\nValues applied. returns: %i, %i", ret, ret2);
+				fflush(stdout);
+			}else{
+				printf("\nValues not applied.");
+				fflush(stdout);
+			}
+
+		}else if(strcmp(command, "calibrate-temperature") == 0){
+
+			char tmpline[64] = {0};
+
+			float M = 0;
+			do{
+				printf("\nEnter M (decimal): ");
+				fflush(stdout);
+				getLineInput(tmpline, 64);
+				M = atof(tmpline);
+
+				if(M == 0){
+					printf("\nEntry failed, Please try again.");
+					fflush(stdout);
+				}
+			}while(M == 0);
+
+			float B = 0;
+			do{
+				printf("\nEnter B (decimal): ");
+				fflush(stdout);
+				getLineInput(tmpline, 64);
+				B = atof(tmpline);
+
+				if(B == 0){
+					printf("\nEntry failed, Please try again.");
+					fflush(stdout);
+				}
+			}while(B == 0);
+
+			printf("\nWould You like to apply M = %f and B = %f? (Y/N): ", M, B);
+			fflush(stdout);
+			getLineInput(tmpline, 64);
+
+			if(strcmp(tmpline, "Y") || strcmp(tmpline, "y")){
+
+				esp_err_t ret = nvs_set_blob(*nvsHandle, "temperature_B", &B, sizeof(float));
+				esp_err_t ret2 = nvs_set_blob(*nvsHandle, "temperature_M", &M, sizeof(float));
+				printf("\nValues applied. returns: %i, %i", ret, ret2);
+				fflush(stdout);
+			}else{
+				printf("\nValues not applied.");
+				fflush(stdout);
+			}
+
+		}else if(strcmp(command, "calibrate-flow") == 0){
+
+			char tmpline[64] = {0};
+
+			float mult = 0;
+			do{
+				printf("\nEnter Multiplier (decimal): ");
+				fflush(stdout);
+				getLineInput(tmpline, 64);
+				mult = atof(tmpline);
+
+				if(mult == 0){
+					printf("\nEntry failed, Please try again.");
+					fflush(stdout);
+				}
+			}while(mult == 0);
+
+			printf("\nWould You like to apply Multiplier = %f? (Y/N): ", mult);
+			fflush(stdout);
+			getLineInput(tmpline, 64);
+
+			if(strcmp(tmpline, "Y") || strcmp(tmpline, "y")){
+
+				esp_err_t ret = nvs_set_blob(*nvsHandle, "flow_multiplier", &mult, sizeof(float));
+				printf("\nValues applied. returns: %i", ret);
+				fflush(stdout);
+			}else{
+				printf("\nValues not applied.");
+				fflush(stdout);
+			}
 
 		}else{
 
