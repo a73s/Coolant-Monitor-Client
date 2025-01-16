@@ -29,6 +29,16 @@
 
 static const char *TAG = "MAIN";
 
+volatile bool dataButtonHit = false;
+
+static void IRAM_ATTR data_button_isr(void * args){
+
+	dataButtonHit = true;
+	// gpio_isr_register(&data_button_isr, NULL, NULL, NULL);
+	// gpio_intr_enable(DATA_BUTTON_PIN);
+	return;
+}
+
 void app_main(void){
 
 	struct lerpSpec PRESSURE_CALIBRATION = {0.04467, -25.46537};
@@ -74,6 +84,14 @@ void app_main(void){
 	if(strcmp(tmp, "") != 0){
 		commandMode(&nvsHandle, &wifiCrids);
 	}
+
+	// ======= CONFIGURE DATA BUTTON GPIO =======
+	gpio_reset_pin(DATA_BUTTON_PIN);
+	gpio_set_direction(DATA_BUTTON_PIN, GPIO_MODE_INPUT);
+	gpio_install_isr_service(0);
+	gpio_isr_handler_add(DATA_BUTTON_PIN, &data_button_isr, NULL);
+	gpio_set_intr_type(DATA_BUTTON_PIN, GPIO_INTR_POSEDGE);
+	gpio_intr_enable(DATA_BUTTON_PIN);
 
 	// ======= CONFIGURE SPI =======
 	printf("Configuring SPI interface...\n");
@@ -324,7 +342,8 @@ void app_main(void){
 	ret = nvs_set_u32(nvsHandle, "devID", *recvBuff);
 	ESP_ERROR_CHECK(ret);
 
-	while(1){
+	int socketStatus = 0;
+	while(socketStatus != -1){
 
 		fflush(stdout);
 
@@ -340,12 +359,17 @@ void app_main(void){
 		float pps = takeGPM(pcntChan, pcntUnit);
 
 		char sendbuff[256] = {0};
-		sprintf(sendbuff, "<%f,%f,%f\n", pressurePSI, temp_celsius, pps*FLOW_MULTIPLIER);
+		if(dataButtonHit){
+			dataButtonHit = false;
+			sprintf(sendbuff, "+%f,%f,%f\n", pressurePSI, temp_celsius, pps*FLOW_MULTIPLIER);
+		}else{
+			sprintf(sendbuff, "<%f,%f,%f\n", pressurePSI, temp_celsius, pps*FLOW_MULTIPLIER);
+		}
 
 		printf("==================================================================================\n");
 		fflush(stdout);
 
-		send(socketfd, &sendbuff, strlen(sendbuff), 0);
+		socketStatus = send(socketfd, &sendbuff, strlen(sendbuff), 0);
 
 		vTaskDelay(2000/portTICK_PERIOD_MS);
 	}
