@@ -1,3 +1,4 @@
+Moved to [My personal gitlab server](https://git.seals.li/explore)
 # Coolant Monitor Client
 This is a work in progress firmware for ESP32. The device connects to a server and sends data from a temperature, pressure, and flow sensor.
 
